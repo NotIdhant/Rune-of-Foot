@@ -1,3 +1,13 @@
+"""
+Some notes:
+- In battles, you can attack, defend, or check.
+- Attack -> chooses a random one of your abilities and uses it against the target. It does the depicted amount of damage,
+  and also applies any status effects listed to the target.
+- Defend -> Flips a coin. If heads, you block 40% of the damage you'd normally take. If tails, your defense fails. Either
+  way, however, you block any status effects the move may have induced.
+- Check: Provides information about your enemy, plus juicy lore :DDDDD
+"""
+
 import time
 import random
 import math
@@ -32,29 +42,16 @@ abilities = [
     {"name":"a headbutt", "damage":3}
 ]
 lockedAbilities = [
-    {"name":"Knife Stab", "damage":5},
-    {"name":"Small Fireball", "damage":7},
-    {"name":"Small Ice Shard", "damage":7},
-    {"name":"Thunder Strike", "damage":8},
-    {"name":"Kick of Foot", "damage": 8},
-    {"name":"Thrust of Foot", "damage": 9},
-    {"name":"Footquake", "damage": 10},
-    {"name":"Large Fireball", "damage": 12},
-    {"name":"Large Ice Shard", "damage": 12},
-    {"name":"Thunderstorm", "damage": 15},
-    {"name":"Foot of Fury", "damage": 16},
-    {"name":"Foot of True Rage", "damage": 18},
-    {"name":"Foot of the Elements", "damage": 23},
-    {"name":"Foot of the Gods", "damage": 26},
-    {"name":"Foot of Job Application", "damage": 30}
+    {"name":"Knife Stab", "damage":6}
 ]
 class Character:
-    def __init__(self, name, health, effects, abilities):
+    def __init__(self, name, health, effects, abilities, inventory):
         self.name = name
         self.health = math.ceil(health)
         self.effects = effects
         self.abilities = abilities
         self.defending = False
+        self.inventory = inventory
     def attack(self, target):
         move = random.choice(self.abilities)
         damage = move["damage"]
@@ -64,9 +61,9 @@ class Character:
         elif self.effects == "injured":
             damage = damage*0.7
         elif self.effects == "confused":
-            if random.randint(0,1) == 0:
+            if random.choice([True, False]):
                 damage = 0
-                type("...", delay=0.5)
+                type("...", delay=0.7)
                 wait(1)
                 type(f"{self.name} missed.")
             else:
@@ -80,6 +77,10 @@ class Character:
             else:
                 type(f"{target.name}'s defense failed!")
             target.defending = False
+        else:
+            if move.get("statusGive") is not None:
+                target.effects = move["statusGive"]
+                type(f"{target.name} is now {target.effects}!")
         target.health = math.ceil(target.health - damage)
         if target.health <= 0:
             type(f"{target.name} was defeated.")
@@ -110,12 +111,23 @@ class Character:
                 type(f"One of his eyes is purple. It glints. It twitches.")
             else:
                 type(f"It looks like he knows more than he lets on. The bulging veins on his foot disturb you.")
-    def abilityUnlock(self):
+    def abilityUnlock(self, target):
         abilityUnlocked = lockedAbilities[0]
         lockedAbilities.pop(0)
         self.abilities.append(abilityUnlocked)
         self.abilities.pop(0)
         type(f"{self.name} unlocked {abilityUnlocked['name']}!")
+        wait(1)
+        if target.inventory:
+            item = random.choice(target.inventory)
+            type(f"{target.name} dropped an item. Pick it up? (Y/N)")
+            if input(">> ").lower() == "y":
+                self.inventory.append(item)
+                wait(1)
+                type(f"You got {item}!")
+            else:
+                type("You ignored it and moved on.")
+
 
 def brawlIntro(user, target):
     type(f"{user.name} and {target.name} are about to brawl!")
@@ -154,27 +166,44 @@ def brawl(user, target):
         return False
 
     type(f"You have won the brawl against {target.name}!")
-    user.abilityUnlock()
+    user.abilityUnlock(target)
     header()
     line(1)
     return True
 
 #Enemy types and abilities
 
+# Frail Psychopath
 frailAbilities = [
     {"name":"a weak punch", "damage":1},
     {"name":"a weak slap", "damage":1},
     {"name":"a finger jab to the eyes", "damage":2}
 ]
-frail = Character("Frail Psychopath", 9, "None", frailAbilities)
+frail = Character("Frail Psychopath", 9, "None", frailAbilities, ["Band-Aid"])
 
+# 
 
+entities = [
+    {"enemy":frail, "hard":1, "location":["forest"]}
+]
+
+def spawn(area, difficulty):
+    if isinstance(difficulty, list):
+        diff = random.choice(difficulty)
+    else:
+        diff = difficulty
+    possibleEnemies = [
+        entity for entity in entities
+        if entity["hard"] == diff
+        and area.lower() in entity["location"]
+    ]
+    return random.choice(possibleEnemies)["enemy"]
 
 # Beginning of the game
 type("Greetings, traveler. Please state your name.")
 name = input(">> ")
 type(f"{name}. It has... a presence to it. Like the smell of petrichor, or perhaps - the stench of a sweaty athlete's foot.")
-player = Character(name, 15, "None", abilities)
+player = Character(name, 15, "None", abilities, [])
 line(1)
 wait(3)
 
